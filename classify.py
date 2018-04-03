@@ -21,6 +21,17 @@ print(args.sample)
 def setup():
     conf = SparkConf().setAppName(f'Phase2-{datetime.now()}')
     sc = SparkContext(conf=conf)
-    training_set = get_training_set(sc, args.training, sample=args.sample).map(lambda x: (x[header.index('place_name')], x[header.index('tweet_text')]))
-    input_set = get_input_set(sc, args.input)
-    return (conf, sc, training_set, input_set)
+    training_set = get_training_set(sc, args.training, sample=args.sample)
+    input_text = open(args.input, 'r').readline().strip()
+    return (conf, sc, training_set, input_text)
+
+#TODO
+"""
+Stopwords?
+
+Find distinct places
+Count each place
+Count each word for each place
+
+Create calculation, but how
+"""
