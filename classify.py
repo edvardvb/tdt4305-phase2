@@ -1,5 +1,6 @@
 import argparse
 from datetime import datetime
+from functools import reduce
 
 from pyspark import SparkConf, SparkContext
 from utils import get_training_set, get_stop_words
@@ -19,17 +20,18 @@ print(args.sample)
 
 conf = SparkConf().setAppName(f'Phase2-{datetime.now()}')
 sc = SparkContext(conf=conf)
-training_set = get_training_set(sc, args.training, sample=args.sample)
-input_text = open(args.input, 'r').readline().strip()
+training_set = get_training_set(sc, args.training, sample=args.sample).map(lambda x: (x[0], x[1].lower().split(' ')))
+input_words = open(args.input, 'r').readline().lower().strip().split(' ')
 
-places = training_set.map(lambda x: x[0]).distinct().take(5)
+def get_probability(words, place):
+    tweets_from_place = training_set.filter(lambda x: x[0] == place)
+    parts = [tweets_from_place.filter(lambda x: word in x[1]).count()/tweets_from_place.count() for word in words]
+    return (tweets_from_place.count()/training_set.count()) * reduce(lambda x, y: x*y, parts)
 
-place_counts = training_set.keyBy(lambda x: x[0]).sortByKey().countByKey()
-# dette burde gjøres med en aggregering i stedet, så får man en RDD tilbake istedet for en dict.
-# Da slipper man den over for å finne distinkte også
+places = training_set.filter(lambda x: any([word in input_words for word in x[1]])).map(lambda x: x[0]).distinct().collect()
+probabilities = sc.parallelize([(place, get_probability(input_words, place)) for place in places]).filter(lambda x: x[1] > 0)
 
-print(places)
-print(place_counts)
+print(probabilities)
 
 
 #TODO
