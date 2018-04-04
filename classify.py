@@ -21,27 +21,45 @@ print(args.sample)
 conf = SparkConf().setAppName(f'Phase2-{datetime.now()}')
 sc = SparkContext(conf=conf)
 training_set = get_training_set(sc, args.training, sample=args.sample)
+training_count = training_set.count()
 input_words = open(args.input, 'r').readline().lower().strip().split(' ')
+
+places = training_set.filter(lambda x: any([word in input_words for word in x[1]])).map(lambda x: x[0]).distinct()
+places_list = places.collect()
+temp_set = training_set.filter(lambda x: x[0] in places_list)
+
+print('number of places: ', places.count())
 
 def get_probability(words, place):
     print(place)
-    tweets_from_place = training_set.filter(lambda x: x[0] == place)
-    parts = [tweets_from_place.filter(lambda x: word in x[1]).count()/tweets_from_place.count() for word in words]
-    return (tweets_from_place.count()/training_set.count()) * reduce(lambda x, y: x*y, parts)
+    tweets_from_place = temp_set.filter(lambda x: x[0] == place)
+    count = tweets_from_place.count()
+    def counter(x, y):
+        for i in range(len(words)):
+            if words[i] in y:
+                x[i] += 1
+        return x
 
-places = training_set.filter(lambda x: any([word in input_words for word in x[1]])).map(lambda x: x[0]).distinct().collect()
-probabilities = sc.parallelize([(place, get_probability(input_words, place)) for place in places]).filter(lambda x: x[1] > 0)
+    parts = tweets_from_place.aggregateByKey(
+        [0]*len(words),
+        lambda x, y: counter(x, y),
+        lambda rdd1, rdd2: (rdd1 + rdd2)
+    ).map(lambda x: x[1]).collect()[0]
 
-print(probabilities.collect())
+    return (count/training_count) * (reduce(lambda x, y: x*y, parts)/(count**len(words)))
 
+    #parts = [tweets_from_place.filter(lambda x: word in x[1]).count()/count for word in words]
+    #return (count/training_count) * reduce(lambda x, y: x*y, parts)
 
-#TODO
-"""
-Stopwords?
+probabilities = sc.parallelize([(place, get_probability(input_words, place)) for place in places_list]).filter(lambda x: x[1] > 0)
 
-Find distinct places
-Count each place
-Count each word for each place
-
-Create calculation, but how
-"""
+output_file = open(args.output, 'w')
+if probabilities.count() > 0:
+    max_prob = probabilities.max()[1]
+    top_places = probabilities.filter(lambda x: x[1] == max_prob).collect()
+    for place in top_places:
+        output_file.write(f'{place[0]}\t')
+    output_file.write(str(max_prob))
+else:
+    output_file.write('')
+output_file.close()
