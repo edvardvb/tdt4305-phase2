@@ -20,10 +20,11 @@ print(args.sample)
 
 conf = SparkConf().setAppName(f'Phase2-{datetime.now()}')
 sc = SparkContext(conf=conf)
-training_set = get_training_set(sc, args.training, sample=args.sample).map(lambda x: (x[0], x[1].lower().split(' ')))
+training_set = get_training_set(sc, args.training, sample=args.sample)
 input_words = open(args.input, 'r').readline().lower().strip().split(' ')
 
 def get_probability(words, place):
+    print(place)
     tweets_from_place = training_set.filter(lambda x: x[0] == place)
     parts = [tweets_from_place.filter(lambda x: word in x[1]).count()/tweets_from_place.count() for word in words]
     return (tweets_from_place.count()/training_set.count()) * reduce(lambda x, y: x*y, parts)
@@ -31,7 +32,7 @@ def get_probability(words, place):
 places = training_set.filter(lambda x: any([word in input_words for word in x[1]])).map(lambda x: x[0]).distinct().collect()
 probabilities = sc.parallelize([(place, get_probability(input_words, place)) for place in places]).filter(lambda x: x[1] > 0)
 
-print(probabilities)
+print(probabilities.collect())
 
 
 #TODO
