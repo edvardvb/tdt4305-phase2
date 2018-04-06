@@ -41,7 +41,7 @@ places = training_set\
     .filter(lambda x: x not in not_places)
 places_list = places.collect()
 
-temp_set = training_set.filter(lambda x: x[0] in places_list)
+temp_set = training_set.filter(lambda x: x[0] in places_list).cache()
 
 if args.pretty: print('💁  Number of places with relevant tweets:', places.count())
 
