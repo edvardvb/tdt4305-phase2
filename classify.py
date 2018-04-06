@@ -33,14 +33,14 @@ not_places = training_set\
 
 if args.pretty: print('🔍  Number of places that don\'t have any relevant tweets:', len(not_places))
 
-
 places = training_set\
-    .filter(lambda x: any([word in input_words for word in x[1]]))\
-    .map(lambda x: x[0])\
-    .distinct()\
-    .filter(lambda x: x not in not_places)
-places_list = places.collect()
+    .map(lambda x: (x[0], 1))\
+    .aggregateByKey(0, lambda x, y: x + 1, lambda rdd1, rdd2: rdd1 + rdd2)\
+    .filter(lambda x: x[0] not in not_places)\
+    .sortByKey()\
+    .cache()
 
+places_list = places.map(lambda x: x[0]).collect()
 temp_set = training_set.filter(lambda x: x[0] in places_list).cache()
 
 if args.pretty: print('💁  Number of places with relevant tweets:', places.count())
@@ -56,7 +56,7 @@ def get_probability(i, place):
     if args.pretty: print('==============')
     if args.pretty: print('🗺 ', i, place)
     tweets_from_place = temp_set.filter(lambda x: x[0] == place).map(lambda x: x[1])
-    count = tweets_from_place.count()
+    count = places.lookup(place)[0]
     if args.pretty: print('📚  Number of tweets:', count)
     parts = tweets_from_place.aggregate(
         [0]*input_words_count,
