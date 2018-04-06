@@ -22,7 +22,7 @@ if args.pretty:
 conf = SparkConf().setAppName(f'Phase2-{datetime.now()}')
 sc = SparkContext(conf=conf)
 training_set = get_training_set(sc, args.training, sample=args.sample)
-training_count = training_set.count()
+training_set_count = training_set.count()
 input_words = open(args.input, 'r').readline().lower().strip().split(' ')
 input_words_count = len(input_words)
 
@@ -32,40 +32,35 @@ def counter(x, y):
             x[i] += 1
     return x
 
-not_places = training_set\
-    .aggregateByKey([0]*input_words_count, lambda x, y: counter(x, y), lambda rdd1, rdd2: [rdd1[i] + rdd2[i] for i, j in enumerate(rdd1)])\
-    .filter(lambda x: not all(x[1]))\
-    .map(lambda x: x[0])\
-    .collect()
-
-if args.pretty: print('🔍  Number of places that don\'t have any relevant tweets:', len(not_places))
 
 places = training_set\
-    .map(lambda x: (x[0], 1))\
-    .aggregateByKey(0, lambda x, y: x + 1, lambda rdd1, rdd2: rdd1 + rdd2)\
-    .filter(lambda x: x[0] not in not_places)\
+    .aggregateByKey(
+        ([0]*input_words_count, 0),
+        lambda x, y: (counter(x[0], y), x[1] +1),
+        lambda rdd1, rdd2: (
+                [rdd1[0][i] + rdd2[0][i] for i, j in enumerate(rdd1[0])],
+                rdd1[1] + rdd2[1]
+        )
+    )\
+    .filter(lambda x: all(x[1][0]))\
     .sortByKey()\
     .cache()
 
 places_list = places.map(lambda x: x[0]).collect()
-temp_set = training_set.filter(lambda x: x[0] in places_list).cache()
-
-if args.pretty: print('💁  Number of places with relevant tweets:', places.count())
+if args.pretty: print('💁  Number of places with relevant tweets:', len(places_list))
 
 def get_probability(i, place):
     if args.pretty: print('==============')
     if args.pretty: print('🗺 ', i, place)
-    tweets_from_place = temp_set.filter(lambda x: x[0] == place).map(lambda x: x[1])
-    count = places.lookup(place)[0]
-    if args.pretty: print('📚  Number of tweets:', count)
-    parts = tweets_from_place.aggregate(
-        [0]*input_words_count,
-        lambda x, y: counter(x, y),
-        lambda rdd1, rdd2: [rdd1[i] + rdd2[i] for i, j in enumerate(rdd1)]
-    )
-    if args.pretty: print('📊  Word counts:', parts)
-    probability = (count/training_count) * (reduce(lambda x, y: x*y, parts)/(count**input_words_count))
+
+    no_of_tweets_from_place = places.lookup(place)[0][1]
+    word_counts = places.lookup(place)[0][0]
+    if args.pretty: print('📚  Number of tweets:', no_of_tweets_from_place)
+    if args.pretty: print('📊  Word counts:', word_counts)
+
+    probability = (no_of_tweets_from_place/training_set_count) * (reduce(lambda x, y: x*y, word_counts)/(no_of_tweets_from_place**input_words_count))
     if args.pretty: print ('🎲  Probability:', probability)
+
     return probability
 
 
