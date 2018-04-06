@@ -26,10 +26,17 @@ training_count = training_set.count()
 input_words = open(args.input, 'r').readline().lower().strip().split(' ')
 input_words_count = len(input_words)
 
+def counter(x, y):
+    for i in range(input_words_count):
+        if input_words[i] in y:
+            x[i] += 1
+    return x
+
 not_places = training_set\
-    .aggregateByKey([], lambda x, y: x + y, lambda x, y: x + y)\
-    .filter(lambda x: any([word not in x[1] for word in input_words]))\
-    .map(lambda x: x[0]).collect()
+    .aggregateByKey([0]*input_words_count, lambda x, y: counter(x, y), lambda rdd1, rdd2: [rdd1[i] + rdd2[i] for i, j in enumerate(rdd1)])\
+    .filter(lambda x: not all(x[1]))\
+    .map(lambda x: x[0])\
+    .collect()
 
 if args.pretty: print('🔍  Number of places that don\'t have any relevant tweets:', len(not_places))
 
@@ -44,13 +51,6 @@ places_list = places.map(lambda x: x[0]).collect()
 temp_set = training_set.filter(lambda x: x[0] in places_list).cache()
 
 if args.pretty: print('💁  Number of places with relevant tweets:', places.count())
-
-
-def counter(x, y):
-    for i in range(input_words_count):
-        if input_words[i] in y:
-            x[i] += 1
-    return x
 
 def get_probability(i, place):
     if args.pretty: print('==============')
@@ -69,7 +69,7 @@ def get_probability(i, place):
     return probability
 
 
-probabilities = sc.parallelize([(place, get_probability(i, place)) for i, place in enumerate(places_list)]).filter(lambda x: x[1] > 0)
+probabilities = sc.parallelize([(place, get_probability(i, place)) for i, place in enumerate(places_list)])
 
 output_file = open(args.output, 'w')
 if probabilities.count() > 0:
