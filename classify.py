@@ -39,25 +39,22 @@ places = training_set\
     .sortByKey()\
     .cache()
 
-places_list = places.map(lambda x: x[0]).collect()
-if args.pretty: print('💁  Number of places with relevant tweets:', len(places_list))
+if args.pretty: print('💁  Number of places with relevant tweets:', places.map(lambda x: x[0]).count())
 
-def get_probability(i, place):
+def get_probability(place, tweet_count, word_count):
     if args.pretty: print('==============')
-    if args.pretty: print('🗺 ', i, place)
+    if args.pretty: print('🗺 ', place)
 
-    no_of_tweets_from_place = places.lookup(place)[0][1]
-    word_counts = places.lookup(place)[0][0]
-    if args.pretty: print('📚  Number of tweets:', no_of_tweets_from_place)
-    if args.pretty: print('📊  Word counts:', word_counts)
+    if args.pretty: print('📚  Number of tweets:', tweet_count)
+    if args.pretty: print('📊  Word counts:', word_count)
 
-    probability = (no_of_tweets_from_place/training_set_count) * (reduce(lambda x, y: x*y, word_counts)/(no_of_tweets_from_place**input_words_count))
+    probability = (tweet_count/training_set_count) * (reduce(lambda x, y: x*y, word_count)/(tweet_count**input_words_count))
     if args.pretty: print ('🎲  Probability:', probability)
 
     return probability
 
 
-probabilities = sc.parallelize([(place, get_probability(i, place)) for i, place in enumerate(places_list)])
+probabilities = places.map(lambda x: (x[0], get_probability(x[0], x[1][1], x[1][0])))
 
 output_file = open(args.output, 'w')
 if probabilities.count() > 0:
