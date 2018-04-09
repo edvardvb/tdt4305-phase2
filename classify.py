@@ -1,9 +1,7 @@
 import argparse
-from datetime import datetime
 from functools import reduce
 
-from pyspark import SparkConf, SparkContext
-from utils import get_training_set, get_stop_words
+from utils import setup
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-training', '-t', help='Path to training set', type=str)
@@ -19,12 +17,7 @@ if args.pretty:
     print('🚀  Output file:', args.output)
     print('🚀  Sampling:', args.sample)
 
-conf = SparkConf().setAppName(f'Phase2-{datetime.now()}')
-sc = SparkContext(conf=conf)
-training_set = get_training_set(sc, args.training, sample=args.sample)
-training_set_count = training_set.count()
-input_words = open(args.input, 'r').readline().lower().strip().split(' ')
-input_words_count = len(input_words)
+training_set, training_set_count, input_words, input_words_count = setup(args.training, args.sample, args.input)
 
 def counter(x, y):
     for i in range(input_words_count):
