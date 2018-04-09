@@ -36,7 +36,6 @@ places = training_set\
         )
     )\
     .filter(lambda x: all(x[1][0]))\
-    .sortByKey()\
     .cache()
 
 if args.pretty: print('💁  Number of places with relevant tweets:', places.map(lambda x: x[0]).count())
