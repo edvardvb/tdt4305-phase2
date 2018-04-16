@@ -17,7 +17,7 @@ if args.pretty:
     print('🚀  Output file:', args.output)
     print('🚀  Sampling:', args.sample)
 
-training_set, training_set_count, input_words, input_words_count = setup(args.training, args.sample, args.input)
+training_set, training_set_count, input_words, input_words_count, sc = setup(args.training, args.sample, args.input)
 
 def counter(x, y):
     for i in range(input_words_count):

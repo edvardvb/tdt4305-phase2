@@ -9,9 +9,10 @@ def get_training_set(context, path, sample=False):
 
 def setup(training_path, sample, input_path):
     conf = SparkConf().setAppName(f'Phase2-{datetime.now()}')
+    conf.set("spark.executor.heartbeatInterval","3600s")
     sc = SparkContext(conf=conf)
     training_set = get_training_set(sc, training_path, sample=sample)
     training_set_count = training_set.count()
     input_words = open(input_path, 'r').readline().lower().strip().split(' ')
     input_words_count = len(input_words)
-    return (training_set, training_set_count, input_words, input_words_count)
+    return (training_set, training_set_count, input_words, input_words_count, sc)
