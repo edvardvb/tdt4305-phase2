@@ -45,9 +45,8 @@ if args.pretty: print('💁  Number of places with relevant tweets:', len(places
 def get_probability(i, place):
     if args.pretty: print('==============')
     if args.pretty: print('🗺 ', i, place)
+    word_counts, no_of_tweets_from_place = places.lookup(place)[0]
 
-    no_of_tweets_from_place = places.lookup(place)[0][1]
-    word_counts = places.lookup(place)[0][0]
     if args.pretty: print('📚  Number of tweets:', no_of_tweets_from_place)
     if args.pretty: print('📊  Word counts:', word_counts)
 

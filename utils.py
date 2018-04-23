@@ -9,7 +9,8 @@ def get_training_set(context, path, sample=False):
 
 def setup(training_path, sample, input_path):
     conf = SparkConf().setAppName(f'Phase2-{datetime.now()}')
-    conf.set("spark.executor.heartbeatInterval","3600s")
+    #conf.set("spark.executor.heartbeatInterval","3600s")
+    #conf.set("spark.network.timeout", "3601s")
     sc = SparkContext(conf=conf)
     training_set = get_training_set(sc, training_path, sample=sample)
     training_set_count = training_set.count()
