@@ -71,7 +71,7 @@ def get_probability(i, place):
 
     if args.pretty: print('📚  Number of tweets:', no_of_tweets_from_place)
     if args.pretty: print('📊  Word counts:', word_counts)
-    
+
     probability = (no_of_tweets_from_place/training_set_count) * (reduce(lambda x, y: x*y, word_counts)/(no_of_tweets_from_place**input_words_count)) # Use Naive Bayes formula
     if args.pretty: print ('🎲  Probability:', probability)
 
