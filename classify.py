@@ -20,29 +20,51 @@ if args.pretty:
 training_set, training_set_count, input_words, input_words_count, sc = setup(args.training, args.sample, args.input)
 
 def counter(x, y):
+    """ Count the number of occurrences of each word in input tweet
+    Args: 
+        x (list): A list the same size as number of words in input tweet, representing the word count
+        y (list): List of words in tweet from location
+
+    Returns:
+        List where each element is the count of occurrences of word from input tweet
+    """
+    
     for i in range(input_words_count):
         if input_words[i] in y:
             x[i] += 1
     return x
 
-
+# Places is an RDD where values for the location keys are represented as tuples, containing a list of word counts of each word 
+# in the input tweet for that location, together with the location’s total number of tweets. 
 places = training_set\
     .aggregateByKey(
-        ([0]*input_words_count, 0),
-        lambda x, y: (counter(x[0], y), x[1] +1),
+        ([0]*input_words_count, 0), # Format of the initial value of each key
+        lambda x, y: (counter(x[0], y), x[1] +1), # Aggregate each row with equal keys into the desired type, a list of word counts and a tweet count for that key
         lambda rdd1, rdd2: (
+                # Combination function for partitions of the RDD. Combines the list of the first RDD with the list of the second by summing the respective values of each list and combines the count of tweets by simply adding them together
                 [rdd1[0][i] + rdd2[0][i] for i, j in enumerate(rdd1[0])],
                 rdd1[1] + rdd2[1]
         )
+    # Filter with respect to places where all words from the input tweet occur at least once   
     )\
     .filter(lambda x: all(x[1][0]))\
     .sortByKey()\
-    .cache()
+    .cache() 
 
-places_list = places.map(lambda x: x[0]).collect()
+places_list = places.map(lambda x: x[0]).collect() # Create RDD with location names
+
 if args.pretty: print('💁  Number of places with relevant tweets:', len(places_list))
 
 def get_probability(i, place):
+    """ Calculate probability for input tweet originating from a given locaction
+    Args: 
+        i (int): Index of place in places_list. Used for printing.
+        place (str): Name of location
+
+    Returns:
+        The calculated probability
+    """
+
     if args.pretty: print('==============')
     if args.pretty: print('🗺 ', i, place)
     word_counts, no_of_tweets_from_place = places.lookup(place)[0]
@@ -50,12 +72,12 @@ def get_probability(i, place):
     if args.pretty: print('📚  Number of tweets:', no_of_tweets_from_place)
     if args.pretty: print('📊  Word counts:', word_counts)
 
-    probability = (no_of_tweets_from_place/training_set_count) * (reduce(lambda x, y: x*y, word_counts)/(no_of_tweets_from_place**input_words_count))
+    probability = (no_of_tweets_from_place/training_set_count) * (reduce(lambda x, y: x*y, word_counts)/(no_of_tweets_from_place**input_words_count)) # Use Naive Bayes formula
     if args.pretty: print ('🎲  Probability:', probability)
 
     return probability
 
-
+# Calculate probabilities for all places in places_list
 probabilities = sc.parallelize([(place, get_probability(i, place)) for i, place in enumerate(places_list)])
 
 output_file = open(args.output, 'w')
