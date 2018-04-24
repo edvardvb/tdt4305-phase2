@@ -43,7 +43,7 @@ places = training_set\
         lambda rdd1, rdd2: (
                 # Combines the list of the first with the list of the second by summing the respective values of each list and combines the count of tweets by simply adding them together
                 [rdd1[0][i] + rdd2[0][i] for i, j in enumerate(rdd1[0])],
-                rdd1[1] + rdd2[1]   
+                rdd1[1] + rdd2[1]
         )
     # Filter with respect to places where all words from the input tweet occur at least once   
     )\
@@ -78,7 +78,7 @@ def get_probability(i, place):
     return probability
 
 # Calculate probabilities for all places in places_list
-probabilities = sc.parallelize([(place, get_probability(i, place)) for i, place in enumerate(places_list)]) 
+probabilities = sc.parallelize([(place, get_probability(i, place)) for i, place in enumerate(places_list)])
 
 output_file = open(args.output, 'w')
 if probabilities.count() > 0:
